@@ -1,0 +1,3 @@
+ijson==3.3.0
+maxminddb==2.6.2
+ujson==5.10.0
