@@ -213,9 +213,46 @@ class Parser:
     def get_length_of_data(self):
         return len(self.get_parsed_info())
 
+class leak_check():
+    alpha = 3
+    def __init__(self, data, host_ip):
+        self.data = data
+        self.host_ip = host_ip
+        self.dict = {}
+        self.__fill_dict()
 
+    def __fill_dict(self):
+        for i in range (len(self.data)):
+            if self.data[i]['ip_src'] != '' or self.data[i]['ip_dst'] != '':
+                ip_pair = f"{self.data[i]['ip_src']}_{self.data[i]['ip_dst']}"
+                if ip_pair not in self.dict:
+                    self.dict[f'{ip_pair}'] = self.data[i]['frame_len']
+                else:
+                    self.dict[f'{ip_pair}'] += self.data[i]['frame_len']
+            else:
+                pass
+    
+    def __create_mirror_key(self, key):
+        ip1, ip2 = key.split('_')
+        mirror_key = f"{ip2}_{ip1}"
+        return mirror_key
+    
+    def check_leak(self):
+        for key, value in self.dict.items():
+            if key.split('_')[0] == self.host_ip:
+                mirror_key = self.__create_mirror_key(key)
+                if mirror_key in self.dict:
+                    if self.dict[key] > self.alpha*self.dict[mirror_key]:
+                        print(f"possible leadk detected: {key} has {self.dict[key]} and {mirror_key} has {self.dict[mirror_key]} ") 
+    
 PARSER = Parser('Packets_for_practice2.json')
-#PARSER.print_parsed_info()
+parsed_data= PARSER.get_parsed_info()
+desired_keys = ['ip_src', 'ip_dst', 'frame_len']
+data_leak_check = [{k: d[k] for k in desired_keys} for d in parsed_data]
+host_ip = '192.168.43.130'
+
+leak = leak_check(data_leak_check,host_ip)
+leak.check_leak()
 
 psql_connect_data = {
     'host': 'localhost',
@@ -224,13 +261,13 @@ psql_connect_data = {
     'database': 'ip_info_02'
 }
 
-PSQL_CONNCT = PSQLConnection(psql_connect_data)
+#PSQL_CONNCT = PSQLConnection(psql_connect_data)
 
-fields_to_insert = ('country_from_02', 'country_to_02', 'port_src_02', 'port_dst_02', 'packet_size_02', 'city_from_02', 'city_to_02', 'ASN_from_02', 'ASN_to_02','protocol_02','ip_src_02', 'ip_dst_02')
-column_names_str = ", ".join(fields_to_insert)
-for i in range(PARSER.get_length_of_data()):
-    values_to_insert = PARSER.get_list_info_by_indx(i)
-    PSQL_CONNCT.psql_insert('packets', column_names_str, values_to_insert)
+#ields_to_insert = ('country_from_02', 'country_to_02', 'port_src_02', 'port_dst_02', 'packet_size_02', 'city_from_02', 'city_to_02', 'ASN_from_02', 'ASN_to_02','protocol_02','ip_src_02', 'ip_dst_02')
+#column_names_str = ", ".join(fields_to_insert)
+#for i in range(PARSER.get_length_of_data()):
+  #  values_to_insert = PARSER.get_list_info_by_indx(i)
+  #  PSQL_CONNCT.psql_insert('packets', column_names_str, values_to_insert)
 
 
 #a = Maxinddb()
